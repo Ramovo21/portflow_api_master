@@ -1,0 +1,153 @@
+# Hạ tầng PortFlow .NET (F00 §10.2) – cùng image/cổng với bản Java, nên KHÔNG chạy song song hai compose.
+#   docker compose up -d                 → hạ tầng: postgres, rabbitmq, minio + flyway migrate (chạy app từ IDE với profile dev)
+#   docker compose --profile app up -d   → thêm api + worker (build từ Dockerfile)
+#   docker compose --profile auth up -d  → thêm keycloak (F01, realm infra/keycloak/portflow-realm.json)
+# esign-simulator (F08) sẽ thêm khi port module đó.
+services:
+  postgres:
+    # postgres 17 + extension pgvector (F12)
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: portflow
+      POSTGRES_USER: portflow
+      POSTGRES_PASSWORD: portflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - portflow-pgdata:/var/lib/postgresql/data
+      # chỉ chạy khi volume còn trống: tạo thêm DB keycloak
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portflow -d portflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Bản Java chạy Flyway lúc khởi động; bản .NET chạy Flyway CLI một lần trước api (cùng bảng flyway_schema_history).
+  flyway:
+    image: flyway/flyway:11
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/portflow
+      FLYWAY_USER: portflow
+      FLYWAY_PASSWORD: portflow
+      # Compose = môi trường dev → mặc định kèm seed (user mẫu khớp realm Keycloak).
+      # Phải giữ nguyên giữa các lần chạy, nếu không Flyway báo "applied migration not resolved locally".
+      FLYWAY_LOCATIONS: ${FLYWAY_LOCATIONS:-filesystem:/flyway/sql/migration,filesystem:/flyway/sql/seed}
+      FLYWAY_OUT_OF_ORDER: "false"
+    volumes:
+      - ./db:/flyway/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # giao diện quản trị: http://localhost:15672 (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    # Docker Hub không còn phát hành image minio/minio công khai; dùng bản build MinIO của Chainguard
+    image: cgr.dev/chainguard/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: portflow
+      MINIO_ROOT_PASSWORD: portflow-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"     # console: http://localhost:9001
+    volumes:
+      - portflow-minio:/data
+
+  keycloak:
+    profiles: ["auth"]
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: portflow
+      KC_DB_PASSWORD: portflow
+      KC_HOSTNAME: http://localhost:8180
+      KC_HTTP_PORT: "8080"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro   # realm portflow (F01)
+    healthcheck:
+      # image không có curl: gọi /health/ready (cổng quản trị 9000) bằng bash
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    profiles: ["app"]
+    build: .
+    environment:
+      ASPNETCORE_ENVIRONMENT: api
+      DB_URL: jdbc:postgresql://postgres:5432/portflow
+      RABBITMQ_HOST: rabbitmq
+      MINIO_ENDPOINT: http://minio:9000
+      Logging__Console__FormatterName: json
+      # F01 §5.2: iss = URL trình duyệt thấy; JWKS tải qua tên service nội bộ
+      KC_ISSUER: http://localhost:8180/realms/portflow
+      KC_JWKS: http://keycloak:8080/realms/portflow/protocol/openid-connect/certs
+      # Nút "Đồng bộ từ Keycloak" (POST /admin/users/sync) chạy trên api → cần Admin API qua tên service nội bộ
+      KC_SERVER_URL: http://keycloak:8080
+      KC_SYNC_CLIENT_SECRET: ${KC_SYNC_CLIENT_SECRET:-portflow-backend-secret}
+      # Chỉ dev: loại hồ sơ DEMO để thử luồng duyệt F03 trên UI khi chưa có module hồ sơ
+      Portflow__Workflow__Demo__Enabled: ${WORKFLOW_DEMO_ENABLED:-true}
+    ports:
+      - "8080:8080"
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+        required: false   # chỉ khi bật thêm profile auth
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  worker:
+    profiles: ["app"]
+    build: .
+    environment:
+      ASPNETCORE_ENVIRONMENT: worker
+      DB_URL: jdbc:postgresql://postgres:5432/portflow
+      RABBITMQ_HOST: rabbitmq
+      MINIO_ENDPOINT: http://minio:9000
+      Logging__Console__FormatterName: json
+      # F01 §6: job đồng bộ user gọi Keycloak Admin REST (client portflow-backend)
+      KC_ISSUER: http://localhost:8180/realms/portflow
+      KC_JWKS: http://keycloak:8080/realms/portflow/protocol/openid-connect/certs
+      KC_SERVER_URL: http://keycloak:8080
+      KC_SYNC_CLIENT_SECRET: ${KC_SYNC_CLIENT_SECRET:-portflow-backend-secret}
+      # Chỉ dev: loại hồ sơ DEMO để thử luồng duyệt F03 trên UI khi chưa có module hồ sơ
+      Portflow__Workflow__Demo__Enabled: ${WORKFLOW_DEMO_ENABLED:-true}
+    ports:
+      - "8081:8081"     # actuator của worker
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  portflow-pgdata:
+  portflow-minio:

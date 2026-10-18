@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <InternalsVisibleTo Include="PortFlow.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PortFlow.Shared\PortFlow.Shared.csproj" />
+    <ProjectReference Include="..\PortFlow.Workflow.Api\PortFlow.Workflow.Api.csproj" />
+    <ProjectReference Include="..\..\Identity\PortFlow.Identity.Api\PortFlow.Identity.Api.csproj" />
+  </ItemGroup>
+
+</Project>

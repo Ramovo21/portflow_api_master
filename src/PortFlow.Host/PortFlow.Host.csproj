@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\PortFlow.Shared\PortFlow.Shared.csproj" />
+    <ProjectReference Include="..\Identity\PortFlow.Identity\PortFlow.Identity.csproj" />
+    <ProjectReference Include="..\Customer\PortFlow.Customer\PortFlow.Customer.csproj" />
+    <ProjectReference Include="..\Contract\PortFlow.Contract\PortFlow.Contract.csproj" />
+    <ProjectReference Include="..\Pricing\PortFlow.Pricing\PortFlow.Pricing.csproj" />
+    <ProjectReference Include="..\Workflow\PortFlow.Workflow\PortFlow.Workflow.csproj" />
+    <ProjectReference Include="..\ESign\PortFlow.ESign\PortFlow.ESign.csproj" />
+  </ItemGroup>
+
+</Project>

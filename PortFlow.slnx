@@ -1,0 +1,33 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PortFlow.Host/PortFlow.Host.csproj" />
+    <Project Path="src/PortFlow.Shared/PortFlow.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Contract/">
+    <Project Path="src/Contract/PortFlow.Contract.Api/PortFlow.Contract.Api.csproj" />
+    <Project Path="src/Contract/PortFlow.Contract/PortFlow.Contract.csproj" />
+  </Folder>
+  <Folder Name="/src/Customer/">
+    <Project Path="src/Customer/PortFlow.Customer.Api/PortFlow.Customer.Api.csproj" />
+    <Project Path="src/Customer/PortFlow.Customer/PortFlow.Customer.csproj" />
+  </Folder>
+  <Folder Name="/src/ESign/">
+    <Project Path="src/ESign/PortFlow.ESign.Api/PortFlow.ESign.Api.csproj" />
+    <Project Path="src/ESign/PortFlow.ESign/PortFlow.ESign.csproj" />
+  </Folder>
+  <Folder Name="/src/Identity/">
+    <Project Path="src/Identity/PortFlow.Identity.Api/PortFlow.Identity.Api.csproj" />
+    <Project Path="src/Identity/PortFlow.Identity/PortFlow.Identity.csproj" />
+  </Folder>
+  <Folder Name="/src/Pricing/">
+    <Project Path="src/Pricing/PortFlow.Pricing.Api/PortFlow.Pricing.Api.csproj" />
+    <Project Path="src/Pricing/PortFlow.Pricing/PortFlow.Pricing.csproj" />
+  </Folder>
+  <Folder Name="/src/Workflow/">
+    <Project Path="src/Workflow/PortFlow.Workflow.Api/PortFlow.Workflow.Api.csproj" />
+    <Project Path="src/Workflow/PortFlow.Workflow/PortFlow.Workflow.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PortFlow.Tests/PortFlow.Tests.csproj" />
+  </Folder>
+</Solution>

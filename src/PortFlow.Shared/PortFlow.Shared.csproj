@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <InternalsVisibleTo Include="PortFlow.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Cronos" />
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Minio" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+    <PackageReference Include="Npgsql.NodaTime" />
+    <PackageReference Include="prometheus-net.AspNetCore" />
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
+</Project>

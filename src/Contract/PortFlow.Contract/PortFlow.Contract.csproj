@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PortFlow.Shared\PortFlow.Shared.csproj" />
+    <ProjectReference Include="..\PortFlow.Contract.Api\PortFlow.Contract.Api.csproj" />
+    <ProjectReference Include="..\..\Identity\PortFlow.Identity.Api\PortFlow.Identity.Api.csproj" />
+    <ProjectReference Include="..\..\Customer\PortFlow.Customer.Api\PortFlow.Customer.Api.csproj" />
+    <ProjectReference Include="..\..\Workflow\PortFlow.Workflow.Api\PortFlow.Workflow.Api.csproj" />
+    <ProjectReference Include="..\..\ESign\PortFlow.ESign.Api\PortFlow.ESign.Api.csproj" />
+  </ItemGroup>
+
+</Project>

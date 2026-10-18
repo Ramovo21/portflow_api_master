@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PortFlow.Shared\PortFlow.Shared.csproj" />
+    <ProjectReference Include="..\PortFlow.ESign.Api\PortFlow.ESign.Api.csproj" />
+  </ItemGroup>
+
+</Project>

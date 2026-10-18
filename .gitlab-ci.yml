@@ -1,0 +1,92 @@
+# F00-T06 (.NET): build → unit + architecture → integration (Testcontainers + Flyway) → image
+stages: [build, test, integration, package]
+
+variables:
+  NUGET_PACKAGES: "$CI_PROJECT_DIR/.nuget/packages"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+default:
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+  cache:
+    key: nuget
+    paths: [.nuget/packages]
+
+build:
+  stage: build
+  script:
+    - dotnet build -c Release
+
+unit-test:
+  stage: test
+  script:
+    - dotnet test -c Release --filter "Category!=Integration&Category!=Architecture&Category!=Keycloak" --logger "junit;LogFilePath=TestResults/unit.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: tests/**/TestResults/*.xml
+
+architecture:
+  stage: test
+  script:
+    # Ranh giới module (= ApplicationModules.verify()) + rule ArchUnitNET (F00 §8, AC5)
+    - dotnet test -c Release --filter "Category=Architecture" --logger "junit;LogFilePath=TestResults/architecture.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: tests/**/TestResults/*.xml
+
+integration-test:
+  stage: integration
+  services:
+    - name: docker:27-dind
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+    TESTCONTAINERS_HOST_OVERRIDE: "docker"
+  script:
+    # Flyway chạy trên DB trống trong container → migration lỗi/sai thứ tự bị phát hiện ở đây.
+    - dotnet test -c Release --filter "Category=Integration&Category!=Keycloak" --logger "junit;LogFilePath=TestResults/integration.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: tests/**/TestResults/*.xml
+
+# F01 §15.1: đăng nhập/đồng bộ với Keycloak thật (Testcontainers, import infra/keycloak/portflow-realm.json) – chậm
+integration-keycloak:
+  stage: integration
+  services:
+    - name: docker:27-dind
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+    TESTCONTAINERS_HOST_OVERRIDE: "docker"
+  script:
+    - dotnet test -c Release --filter "Category=Keycloak" --logger "junit;LogFilePath=TestResults/keycloak.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: tests/**/TestResults/*.xml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - changes: [infra/keycloak/**, src/Identity/**]
+
+image:
+  stage: package
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" .
+  only: [main]
